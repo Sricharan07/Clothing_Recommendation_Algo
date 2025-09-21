@@ -5,10 +5,16 @@ import {
   TouchableOpacity,
   Dimensions,
   Text,
+  Animated,
+  PanGestureHandler,
+  State,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import ClothingCard from './ClothingCard';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
+import { Colors } from '../constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -36,10 +42,27 @@ interface SwipeCardsProps {
 
 const SwipeCards = ({ data, onSwipeLeft, onSwipeRight, onRefresh, onClearPreferences, loadMoreIfNeeded }: SwipeCardsProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [likeAnimation] = useState(new Animated.Value(0));
+  const [dislikeAnimation] = useState(new Animated.Value(0));
 
   const handleLike = () => {
     const item = data[currentIndex];
     console.log('Liked:', item.name);
+    
+    // Animate like button
+    Animated.sequence([
+      Animated.timing(likeAnimation, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeAnimation, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     onSwipeRight(item);
     const newIndex = currentIndex + 1;
     setCurrentIndex(newIndex);
@@ -53,6 +76,21 @@ const SwipeCards = ({ data, onSwipeLeft, onSwipeRight, onRefresh, onClearPrefere
   const handleDislike = () => {
     const item = data[currentIndex];
     console.log('Disliked:', item.name);
+    
+    // Animate dislike button
+    Animated.sequence([
+      Animated.timing(dislikeAnimation, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dislikeAnimation, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     onSwipeLeft(item);
     const newIndex = currentIndex + 1;
     setCurrentIndex(newIndex);
@@ -122,27 +160,71 @@ const SwipeCards = ({ data, onSwipeLeft, onSwipeRight, onRefresh, onClearPrefere
           <ClothingCard item={currentItem} />
         </View>
 
-        {/* Action buttons */}
+        {/* Modern action buttons */}
         <View style={styles.buttonsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.dislikeButton]}
-            onPress={handleDislike}
+          <Animated.View
+            style={[
+              styles.actionButtonWrapper,
+              {
+                transform: [
+                  {
+                    scale: dislikeAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.2],
+                    }),
+                  },
+                ],
+              },
+            ]}
           >
-            <Text style={styles.dislikeButtonText}>✕</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.dislikeButton]}
+              onPress={handleDislike}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={24} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
 
           <View style={styles.itemInfo}>
-            <ThemedText style={styles.itemCounter}>
-              {currentIndex + 1} / {data.length}
-            </ThemedText>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { width: `${((currentIndex + 1) / data.length) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <ThemedText style={styles.itemCounter}>
+                {currentIndex + 1} / {data.length}
+              </ThemedText>
+            </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.likeButton]}
-            onPress={handleLike}
+          <Animated.View
+            style={[
+              styles.actionButtonWrapper,
+              {
+                transform: [
+                  {
+                    scale: likeAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.2],
+                    }),
+                  },
+                ],
+              },
+            ]}
           >
-            <Text style={styles.likeButtonText}>♥</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.likeButton]}
+              onPress={handleLike}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="heart" size={24} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </View>
     </View>
@@ -152,7 +234,7 @@ const SwipeCards = ({ data, onSwipeLeft, onSwipeRight, onRefresh, onClearPrefere
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.light.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -165,11 +247,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '85%',
-    borderRadius: 15,
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
     elevation: 8,
   },
   currentCard: {
@@ -177,20 +259,27 @@ const styles = StyleSheet.create({
   },
   nextCard: {
     zIndex: 1,
-    opacity: 0.7,
-    transform: [{ scale: 0.95 }, { translateY: 10 }],
+    opacity: 0.6,
+    transform: [{ scale: 0.92 }, { translateY: 15 }],
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 20,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 0,
     zIndex: 3,
+  },
+  actionButtonWrapper: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   actionButton: {
     width: 60,
@@ -198,70 +287,76 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
   },
   dislikeButton: {
-    backgroundColor: '#FF5458',
+    backgroundColor: Colors.light.danger,
   },
   likeButton: {
-    backgroundColor: '#4CD964',
-  },
-  dislikeButtonText: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  likeButtonText: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: 'bold',
+    backgroundColor: Colors.light.success,
   },
   itemInfo: {
     alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 20,
+  },
+  progressContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  progressBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: Colors.light.border,
+    borderRadius: 2,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: Colors.light.primary,
+    borderRadius: 2,
   },
   itemCounter: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: Colors.light.textSecondary,
   },
   endContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.light.surface,
   },
   endText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontSize: 36,
+    fontWeight: '800',
+    marginBottom: 16,
     textAlign: 'center',
+    color: Colors.light.text,
   },
   subtitle: {
     fontSize: 18,
-    color: '#666',
+    color: Colors.light.textSecondary,
     marginBottom: 40,
     textAlign: 'center',
+    lineHeight: 24,
   },
   resetButton: {
-    backgroundColor: '#4CD964',
+    backgroundColor: Colors.light.primary,
     paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 25,
+    paddingVertical: 16,
+    borderRadius: 30,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 8,
   },
   resetButtonText: {
     color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });
 

@@ -23,11 +23,14 @@ export default function HomeScreen() {
     return (
       <ThemedView style={styles.loadingContainer}>
         <LinearGradient
-          colors={['#f8f8f8', '#e1e1e1', '#f8f8f8']}
+          colors={['#667EEA', '#764BA2', '#667EEA']}
           style={styles.loadingGradient}
         >
-          <ActivityIndicator size="large" color="#4a80f5" />
-          <ThemedText style={styles.loadingText}>Loading your style matches...</ThemedText>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <ThemedText style={styles.loadingText}>Discovering your style...</ThemedText>
+            <ThemedText style={styles.loadingSubtext}>Finding the perfect matches for you</ThemedText>
+          </View>
         </LinearGradient>
       </ThemedView>
     );
@@ -53,13 +56,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#F9FAFB',
   },
   loadingGradient: {
     width: '100%',
@@ -67,10 +70,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingContent: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
   loadingText: {
-    marginTop: 20,
+    marginTop: 24,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    marginTop: 8,
     fontSize: 16,
-    fontWeight: '500',
-    color: '#555',
+    fontWeight: '400',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
   },
 });
