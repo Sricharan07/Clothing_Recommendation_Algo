@@ -116,13 +116,13 @@ export function RecommendationProvider({ children }) {
     }
   };
 
-  // Auto-save state when wishlist changes
+  // Auto-save state when wishlist or engine state changes
   useEffect(() => {
     if (wishlistItems.length === 0 && !recommendationEngine) {
       return; // Skip initial empty state
     }
 
-    console.log(`[CONTEXT] Wishlist changed - scheduling save (${wishlistItems.length} items)`);
+    console.log(`[CONTEXT] State changed - scheduling save (${wishlistItems.length} wishlist items)`);
 
     const timeoutId = setTimeout(saveState, 500);
     return () => clearTimeout(timeoutId);
@@ -251,10 +251,11 @@ export function RecommendationProvider({ children }) {
 
       // Reset engine to fresh state
       recommendationEngine.wishlistItems = [];
-      recommendationEngine.firstTimeDislikes = [];
+      recommendationEngine.firstTimeDislikes.clear();
       recommendationEngine.permanentDislikes = [];
-      recommendationEngine.shownItems = [];
+      recommendationEngine.shownItems.clear();
       recommendationEngine.totalSwipes = 0;
+      recommendationEngine.updateUserPreferences();
 
       // Get fresh recommendations
       const freshItems = recommendationEngine.getRecommendations(BATCH_SIZE);
@@ -276,6 +277,7 @@ export function RecommendationProvider({ children }) {
     // Remove from engine
     if (recommendationEngine) {
       recommendationEngine.wishlistItems = recommendationEngine.wishlistItems.filter(id => id !== itemId);
+      recommendationEngine.updateUserPreferences();
     }
 
     console.log(`[CONTEXT] Item ${itemId} removed from wishlist`);

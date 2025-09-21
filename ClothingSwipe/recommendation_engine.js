@@ -1,18 +1,28 @@
-// Simplified recommendation engine for Clothing Swipe app
-// Based on functionality.md requirements
+// Classification-based recommendation engine for Clothing Swipe app
+// Implements functionality.md requirements using available data attributes
 
 class RecommendationEngine {
   constructor(clothingData) {
     this.clothingData = clothingData;
 
-    // Core tracking arrays
+    // User interaction tracking
     this.wishlistItems = []; // Items user liked (right swipe)
-    this.firstTimeDislikes = []; // Items disliked once (hidden for 25 swipes)
+    this.firstTimeDislikes = new Map(); // itemId -> swipeNumberWhenDisliked
     this.permanentDislikes = []; // Items disliked twice (never shown again)
-    this.shownItems = []; // Track what we've shown to avoid immediate repeats
+    this.shownItems = new Set(); // Track what we've shown
 
     // Swipe counting
     this.totalSwipes = 0;
+
+    // User preferences learned from wishlist
+    this.userPreferences = {
+      categories: new Map(),
+      subcategories: new Map(),
+      brands: new Map(),
+      styles: new Map(),
+      colors: new Map(),
+      priceRanges: new Map()
+    };
 
     // Configuration
     this.TEMP_DISLIKE_DURATION = 25; // Hide first-time dislikes for 25 swipes
@@ -27,6 +37,7 @@ class RecommendationEngine {
 
     if (!this.wishlistItems.includes(itemId)) {
       this.wishlistItems.push(itemId);
+      this.updateUserPreferences();
       console.log(`[ENGINE] Wishlist now has ${this.wishlistItems.length} items`);
     }
   }
@@ -36,15 +47,15 @@ class RecommendationEngine {
     console.log(`[ENGINE] Processing dislike for ${itemId}`);
 
     // Check if this item was already disliked once
-    if (this.firstTimeDislikes.includes(itemId)) {
+    if (this.firstTimeDislikes.has(itemId)) {
       // Second dislike - make it permanent
       console.log(`[ENGINE] Second dislike - adding ${itemId} to permanent dislikes`);
-      this.firstTimeDislikes = this.firstTimeDislikes.filter(id => id !== itemId);
+      this.firstTimeDislikes.delete(itemId);
       this.permanentDislikes.push(itemId);
     } else {
-      // First dislike - add to temporary dislike list
+      // First dislike - add to temporary dislike list with current swipe number
       console.log(`[ENGINE] First dislike - adding ${itemId} to temporary dislikes`);
-      this.firstTimeDislikes.push(itemId);
+      this.firstTimeDislikes.set(itemId, this.totalSwipes);
     }
   }
 
@@ -52,6 +63,36 @@ class RecommendationEngine {
   processSwipe() {
     this.totalSwipes++;
     console.log(`[ENGINE] Processed swipe ${this.totalSwipes}`);
+  }
+
+  // Update user preferences based on wishlist items
+  updateUserPreferences() {
+    // Reset preferences
+    Object.values(this.userPreferences).forEach(map => map.clear());
+
+    // Build preferences from wishlist items
+    this.wishlistItems.forEach(itemId => {
+      const item = this.clothingData.find(i => i.id === itemId);
+      if (!item) return;
+
+      // Count occurrences of each attribute
+      this.incrementPreference('categories', item.category);
+      this.incrementPreference('subcategories', item.subcategory);
+      this.incrementPreference('brands', item.brand);
+      this.incrementPreference('styles', item.style);
+      this.incrementPreference('colors', item.color);
+      this.incrementPreference('priceRanges', item.price_range);
+    });
+
+    console.log(`[ENGINE] Updated preferences based on ${this.wishlistItems.length} wishlist items`);
+  }
+
+  // Increment preference counter for a given attribute
+  incrementPreference(attributeType, attributeValue) {
+    if (!attributeValue) return;
+
+    const currentCount = this.userPreferences[attributeType].get(attributeValue) || 0;
+    this.userPreferences[attributeType].set(attributeValue, currentCount + 1);
   }
 
   // Check if an item should be shown based on dislike rules
@@ -62,14 +103,69 @@ class RecommendationEngine {
     }
 
     // For first-time dislikes, check if 25 swipes have passed
-    if (this.firstTimeDislikes.includes(itemId)) {
-      // Find when this item was first disliked by looking at total swipes
-      // For simplicity, we'll hide for next 25 swipes from current point
-      // In a real implementation, you'd track when each item was disliked
-      return this.totalSwipes % this.TEMP_DISLIKE_DURATION === 0;
+    if (this.firstTimeDislikes.has(itemId)) {
+      const swipeWhenDisliked = this.firstTimeDislikes.get(itemId);
+      const swipesSinceDislike = this.totalSwipes - swipeWhenDisliked;
+
+      if (swipesSinceDislike >= this.TEMP_DISLIKE_DURATION) {
+        // 25 swipes have passed, remove from temp dislikes and allow to be shown
+        this.firstTimeDislikes.delete(itemId);
+        return true;
+      }
+      return false; // Still within 25 swipe cooldown
     }
 
     return true;
+  }
+
+  // Check if we should reduce recommendations for similar items to a disliked item
+  shouldReduceSimilarItems(item, dislikedItemId) {
+    const dislikedItem = this.clothingData.find(i => i.id === dislikedItemId);
+    if (!dislikedItem) return false;
+
+    // Calculate similarity based on available attributes
+    let similarityScore = 0;
+    let totalAttributes = 0;
+
+    // Same category (high weight)
+    if (item.category && dislikedItem.category) {
+      totalAttributes++;
+      if (item.category === dislikedItem.category) similarityScore++;
+    }
+
+    // Same subcategory (high weight)
+    if (item.subcategory && dislikedItem.subcategory) {
+      totalAttributes++;
+      if (item.subcategory === dislikedItem.subcategory) similarityScore++;
+    }
+
+    // Same brand (medium weight)
+    if (item.brand && dislikedItem.brand) {
+      totalAttributes++;
+      if (item.brand === dislikedItem.brand) similarityScore += 0.7;
+    }
+
+    // Same style (medium weight)
+    if (item.style && dislikedItem.style) {
+      totalAttributes++;
+      if (item.style === dislikedItem.style) similarityScore += 0.7;
+    }
+
+    // Same color (lower weight)
+    if (item.color && dislikedItem.color) {
+      totalAttributes++;
+      if (item.color === dislikedItem.color) similarityScore += 0.5;
+    }
+
+    // Same price range (lower weight)
+    if (item.price_range && dislikedItem.price_range) {
+      totalAttributes++;
+      if (item.price_range === dislikedItem.price_range) similarityScore += 0.3;
+    }
+
+    // Consider items similar if similarity score is above threshold
+    const similarityRatio = totalAttributes > 0 ? similarityScore / totalAttributes : 0;
+    return similarityRatio > 0.6; // 60% similarity threshold
   }
 
   // Get available items for recommendation
@@ -83,6 +179,17 @@ class RecommendationEngine {
       // Apply dislike rules
       if (!this.shouldShowDislikedItem(item.id)) {
         return false;
+      }
+
+      // Reduce similar items to recently disliked items
+      const recentDislikes = Array.from(this.firstTimeDislikes.keys()).slice(-5); // Last 5 dislikes
+      for (const dislikedItemId of recentDislikes) {
+        if (this.shouldReduceSimilarItems(item, dislikedItemId)) {
+          // Reduce probability of showing similar items (skip 70% of the time)
+          if (Math.random() < 0.7) {
+            return false;
+          }
+        }
       }
 
       return true;
@@ -105,124 +212,37 @@ class RecommendationEngine {
     return item;
   }
 
-  // Get personalized recommendations based on wishlist
-  getPersonalizedRecommendations(count) {
+  // Calculate preference score for an item based on user's wishlist preferences
+  calculatePreferenceScore(item) {
     if (this.wishlistItems.length === 0) {
-      // No preferences yet, return random items
-      return this.getRandomRecommendations(count);
+      return Math.random(); // Random score for new users
     }
 
-    const availableItems = this.getAvailableItems();
-
-    if (availableItems.length === 0) {
-      return [];
-    }
-
-    // Calculate preference scores based on wishlist items
-    const userPreferences = this.calculateUserPreferences();
-
-    // Score each available item
-    const scoredItems = availableItems.map(item => ({
-      ...item,
-      score: this.calculateItemScore(item, userPreferences)
-    }));
-
-    // Sort by score (highest first)
-    scoredItems.sort((a, b) => b.score - a.score);
-
-    // Return top items with some randomness for variety
-    const topCount = Math.min(count * 2, scoredItems.length);
-    const topItems = scoredItems.slice(0, topCount);
-
-    const recommendations = [];
-    for (let i = 0; i < count && i < topItems.length; i++) {
-      // Add some randomness by occasionally picking from top items instead of just the best
-      const index = Math.random() < 0.7 ? i : Math.floor(Math.random() * Math.min(5, topItems.length));
-      if (topItems[index] && !recommendations.some(r => r.id === topItems[index].id)) {
-        recommendations.push(topItems[index]);
-      }
-    }
-
-    return recommendations;
-  }
-
-  // Get random recommendations (for new users)
-  getRandomRecommendations(count) {
-    const availableItems = this.getAvailableItems();
-    const recommendations = [];
-
-    for (let i = 0; i < count && availableItems.length > 0; i++) {
-      const randomIndex = Math.floor(Math.random() * availableItems.length);
-      const item = availableItems.splice(randomIndex, 1)[0];
-      recommendations.push(item);
-    }
-
-    return recommendations;
-  }
-
-  // Calculate user preferences from wishlist
-  calculateUserPreferences() {
-    const preferences = {
-      brands: {},
-      categories: {},
-      styles: {},
-      colors: {},
-      priceRanges: {}
-    };
-
-    this.wishlistItems.forEach(itemId => {
-      const item = this.clothingData.find(i => i.id === itemId);
-      if (!item) return;
-
-      // Count occurrences of each attribute
-      if (item.brand) {
-        preferences.brands[item.brand] = (preferences.brands[item.brand] || 0) + 1;
-      }
-      if (item.category) {
-        preferences.categories[item.category] = (preferences.categories[item.category] || 0) + 1;
-      }
-      if (item.style) {
-        preferences.styles[item.style] = (preferences.styles[item.style] || 0) + 1;
-      }
-      if (item.color) {
-        preferences.colors[item.color] = (preferences.colors[item.color] || 0) + 1;
-      }
-      if (item.price_range) {
-        preferences.priceRanges[item.price_range] = (preferences.priceRanges[item.price_range] || 0) + 1;
-      }
-    });
-
-    return preferences;
-  }
-
-  // Calculate score for an item based on user preferences
-  calculateItemScore(item, preferences) {
     let score = 0;
 
-    // Brand matching
-    if (item.brand && preferences.brands[item.brand]) {
-      score += preferences.brands[item.brand] * 2;
-    }
+    // Category matching (highest weight)
+    const categoryWeight = this.userPreferences.categories.get(item.category) || 0;
+    score += categoryWeight * 3.0;
 
-    // Category matching (higher weight)
-    if (item.category && preferences.categories[item.category]) {
-      score += preferences.categories[item.category] * 3;
-    }
+    // Subcategory matching (high weight)
+    const subcategoryWeight = this.userPreferences.subcategories.get(item.subcategory) || 0;
+    score += subcategoryWeight * 2.5;
 
-    // Style matching
-    if (item.style && preferences.styles[item.style]) {
-      score += preferences.styles[item.style] * 1.5;
-    }
+    // Brand matching (medium weight)
+    const brandWeight = this.userPreferences.brands.get(item.brand) || 0;
+    score += brandWeight * 2.0;
 
-    // Color matching
-    if (item.color && preferences.colors[item.color]) {
-      score += preferences.colors[item.color] * 1;
-    }
+    // Style matching (medium weight)
+    const styleWeight = this.userPreferences.styles.get(item.style) || 0;
+    score += styleWeight * 1.5;
 
-    // Price range matching
-    if (item.price_range && preferences.priceRanges[item.price_range]) {
-      score += preferences.priceRanges[item.price_range] * 0.8;
-    }
+    // Color matching (lower weight)
+    const colorWeight = this.userPreferences.colors.get(item.color) || 0;
+    score += colorWeight * 1.0;
+
+    // Price range matching (lower weight)
+    const priceWeight = this.userPreferences.priceRanges.get(item.price_range) || 0;
+    score += priceWeight * 0.8;
 
     // Add small random factor for variety
     score += Math.random() * 0.5;
@@ -230,10 +250,56 @@ class RecommendationEngine {
     return score;
   }
 
+  // Get personalized recommendations based on wishlist
+  getPersonalizedRecommendations(count) {
+    const availableItems = this.getAvailableItems();
+
+    if (availableItems.length === 0) {
+      return [];
+    }
+
+    // Score items based on user preferences
+    const scoredItems = availableItems.map(item => ({
+      ...item,
+      score: this.calculatePreferenceScore(item)
+    }));
+
+    // Sort by score (highest first)
+    scoredItems.sort((a, b) => b.score - a.score);
+
+    // Take top items with some randomness for variety
+    const topCount = Math.min(count * 3, scoredItems.length);
+    const topItems = scoredItems.slice(0, topCount);
+
+    const recommendations = [];
+    for (let i = 0; i < count && topItems.length > 0; i++) {
+      // Weighted random selection from top items
+      const weights = topItems.map((_, index) => 1 / (index + 1)); // Higher weight for better scores
+      const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+      let random = Math.random() * totalWeight;
+      let selectedIndex = 0;
+
+      for (let j = 0; j < weights.length; j++) {
+        random -= weights[j];
+        if (random <= 0) {
+          selectedIndex = j;
+          break;
+        }
+      }
+
+      const selectedItem = topItems.splice(selectedIndex, 1)[0];
+      recommendations.push(selectedItem);
+      this.shownItems.add(selectedItem.id);
+    }
+
+    return recommendations;
+  }
+
   // Main recommendation function
   getRecommendations(count = 10) {
     console.log(`[ENGINE] Getting ${count} recommendations`);
-    console.log(`[ENGINE] Current state: Wishlist=${this.wishlistItems.length}, TempDislikes=${this.firstTimeDislikes.length}, PermanentDislikes=${this.permanentDislikes.length}, TotalSwipes=${this.totalSwipes}`);
+    console.log(`[ENGINE] Current state: Wishlist=${this.wishlistItems.length}, TempDislikes=${this.firstTimeDislikes.size}, PermanentDislikes=${this.permanentDislikes.length}, TotalSwipes=${this.totalSwipes}`);
 
     const recommendations = [];
 
@@ -243,6 +309,7 @@ class RecommendationEngine {
       const explorationItem = this.getExplorationItem();
       if (explorationItem) {
         recommendations.push(explorationItem);
+        this.shownItems.add(explorationItem.id);
       }
     }
 
@@ -253,27 +320,18 @@ class RecommendationEngine {
       recommendations.push(...personalizedRecs);
     }
 
-    // Remove any items we've already shown recently to avoid immediate repeats
-    const filteredRecs = recommendations.filter(item => {
-      const recentlyShown = this.shownItems.slice(-20).includes(item.id);
-      if (!recentlyShown) {
-        this.shownItems.push(item.id);
-      }
-      return !recentlyShown;
-    });
-
-    console.log(`[ENGINE] Returning ${filteredRecs.length} recommendations`);
-    return filteredRecs;
+    console.log(`[ENGINE] Returning ${recommendations.length} recommendations`);
+    return recommendations;
   }
 
   // Save current state
   getStateForSaving() {
     return {
       wishlistItems: [...this.wishlistItems],
-      firstTimeDislikes: [...this.firstTimeDislikes],
+      firstTimeDislikes: Object.fromEntries(this.firstTimeDislikes),
       permanentDislikes: [...this.permanentDislikes],
       totalSwipes: this.totalSwipes,
-      shownItems: [...this.shownItems]
+      shownItems: Array.from(this.shownItems)
     };
   }
 
@@ -285,7 +343,7 @@ class RecommendationEngine {
       this.wishlistItems = [...savedData.wishlistItems];
     }
     if (savedData.firstTimeDislikes) {
-      this.firstTimeDislikes = [...savedData.firstTimeDislikes];
+      this.firstTimeDislikes = new Map(Object.entries(savedData.firstTimeDislikes));
     }
     if (savedData.permanentDislikes) {
       this.permanentDislikes = [...savedData.permanentDislikes];
@@ -294,22 +352,19 @@ class RecommendationEngine {
       this.totalSwipes = savedData.totalSwipes;
     }
     if (savedData.shownItems) {
-      this.shownItems = [...savedData.shownItems];
+      this.shownItems = new Set(savedData.shownItems);
     }
+
+    // Rebuild preferences
+    this.updateUserPreferences();
 
     console.log(`[ENGINE] State restored successfully`);
   }
 
-  // Update user preferences (kept for compatibility)
-  updateUserPreferences() {
-    // This is now handled automatically in getPersonalizedRecommendations
-    console.log(`[ENGINE] Preferences updated based on ${this.wishlistItems.length} wishlist items`);
-  }
-
-  // Reset used items (for when running low on content)
+  // Reset shown items (for when running low on content)
   resetUsedItems() {
     console.log(`[ENGINE] Resetting shown items for fresh content`);
-    this.shownItems = [];
+    this.shownItems.clear();
   }
 
   // Check if item is available for recommendations

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, FlatList, View, Image, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, FlatList, View, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -11,7 +11,6 @@ export default function WishlistScreen() {
   const { wishlistItems, removeFromWishlist } = useRecommendation();
 
   console.log(`[Wishlist Screen] Displaying ${wishlistItems.length} wishlist items`);
-  console.log(`[Wishlist Screen] Wishlist items:`, wishlistItems.map(item => ({ id: item.id, name: item.name })));
 
   useEffect(() => {
     console.log(`[Wishlist Screen] Wishlist updated - now showing ${wishlistItems.length} items`);
@@ -40,8 +39,8 @@ export default function WishlistScreen() {
     <View style={styles.itemContainer}>
       <View style={styles.card}>
         <View style={styles.imageContainer}>
-          <ClothingImage 
-            imageUrl={item.image_url} 
+          <ClothingImage
+            imageUrl={item.image_url}
             category={item.category}
             style={styles.image}
           />
@@ -71,9 +70,14 @@ export default function WishlistScreen() {
                 <ThemedText style={styles.tagText}>{item.color}</ThemedText>
               </View>
             )}
+            {item.style && (
+              <View style={[styles.tag, { backgroundColor: '#fff0e6' }]}>
+                <ThemedText style={styles.tagText}>{item.style}</ThemedText>
+              </View>
+            )}
           </View>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.removeButton}
           onPress={() => handleRemoveItem(item)}
         >
@@ -91,13 +95,13 @@ export default function WishlistScreen() {
         style={styles.emptyGradient}
       >
         <View style={styles.emptyImageContainer}>
-          <ThemedText style={styles.emptyIcon}>📋</ThemedText>
+          <ThemedText style={styles.emptyIcon}>💕</ThemedText>
         </View>
         <ThemedText type="title" style={styles.emptyTitle}>
           Your wishlist is empty
         </ThemedText>
         <ThemedText style={styles.emptyText}>
-          Items you like will appear here. Start swiping to build your wishlist!
+          Items you like will appear here. Start swiping to build your wishlist based on your preferences!
         </ThemedText>
       </LinearGradient>
     </ThemedView>
@@ -107,7 +111,7 @@ export default function WishlistScreen() {
     <ThemedView style={styles.container}>
       <StatusBar style="dark" />
       <ThemedText type="title" style={styles.title}>
-        My Wishlist
+        My Wishlist ({wishlistItems.length} items)
       </ThemedText>
       <FlatList
         data={wishlistItems}
