@@ -159,73 +159,73 @@ const SwipeCards = ({ data, onSwipeLeft, onSwipeRight, onRefresh, onClearPrefere
         <View style={[styles.card, styles.currentCard]}>
           <ClothingCard item={currentItem} />
         </View>
+      </View>
 
-        {/* Modern action buttons */}
-        <View style={styles.buttonsContainer}>
-          <Animated.View
-            style={[
-              styles.actionButtonWrapper,
-              {
-                transform: [
-                  {
-                    scale: dislikeAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.2],
-                    }),
-                  },
-                ],
-              },
-            ]}
+      {/* Action buttons - positioned outside card container */}
+      <View style={styles.buttonsContainer}>
+        <Animated.View
+          style={[
+            styles.actionButtonWrapper,
+            {
+              transform: [
+                {
+                  scale: dislikeAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.2],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.actionButton, styles.dislikeButton]}
+            onPress={handleDislike}
+            activeOpacity={0.8}
           >
-            <TouchableOpacity
-              style={[styles.actionButton, styles.dislikeButton]}
-              onPress={handleDislike}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </Animated.View>
+              <Ionicons name="close" size={Math.min(24, SCREEN_WIDTH * 0.06)} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
 
-          <View style={styles.itemInfo}>
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { width: `${((currentIndex + 1) / data.length) * 100}%` }
-                  ]} 
-                />
-              </View>
-              <ThemedText style={styles.itemCounter}>
-                {currentIndex + 1} / {data.length}
-              </ThemedText>
+        <View style={styles.itemInfo}>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${((currentIndex + 1) / data.length) * 100}%` }
+                ]} 
+              />
             </View>
+            <ThemedText style={styles.itemCounter}>
+              {currentIndex + 1} / {data.length}
+            </ThemedText>
           </View>
-
-          <Animated.View
-            style={[
-              styles.actionButtonWrapper,
-              {
-                transform: [
-                  {
-                    scale: likeAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.2],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.actionButton, styles.likeButton]}
-              onPress={handleLike}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="heart" size={24} color="white" />
-            </TouchableOpacity>
-          </Animated.View>
         </View>
+
+        <Animated.View
+          style={[
+            styles.actionButtonWrapper,
+            {
+              transform: [
+                {
+                  scale: likeAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.2],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.actionButton, styles.likeButton]}
+            onPress={handleLike}
+            activeOpacity={0.8}
+          >
+              <Ionicons name="heart" size={Math.min(24, SCREEN_WIDTH * 0.06)} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );
@@ -235,18 +235,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   cardContainer: {
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_HEIGHT * 0.8,
+    flex: 1,
     position: 'relative',
+    marginBottom: 20,
   },
   card: {
     position: 'absolute',
     width: '100%',
-    height: '85%',
+    height: '100%',
     borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -263,16 +264,11 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.92 }, { translateY: 15 }],
   },
   buttonsContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 0,
-    zIndex: 3,
+    paddingHorizontal: 10,
+    minHeight: 80,
   },
   actionButtonWrapper: {
     shadowColor: '#000',
@@ -282,9 +278,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   actionButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: Math.min(60, SCREEN_WIDTH * 0.15), // Responsive button size
+    height: Math.min(60, SCREEN_WIDTH * 0.15),
+    borderRadius: Math.min(30, SCREEN_WIDTH * 0.075),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -298,6 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 20,
+    maxWidth: 200, // Prevent info from taking too much space on larger screens
   },
   progressContainer: {
     alignItems: 'center',

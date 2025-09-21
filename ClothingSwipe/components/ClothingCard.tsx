@@ -84,8 +84,8 @@ const ClothingCard = ({ item }: CardProps) => {
 
 const styles = StyleSheet.create({
   card: {
-    width: SCREEN_WIDTH * 0.95,
-    height: SCREEN_HEIGHT * 0.8,
+    width: '100%',
+    height: '100%',
     borderRadius: 24,
     backgroundColor: 'white',
     shadowColor: '#000',
@@ -97,7 +97,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 12,
     overflow: 'hidden',
-    alignSelf: 'center',
   },
   image: {
     width: '100%',
@@ -115,10 +114,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '40%',
+    height: '35%',
     justifyContent: 'flex-end',
     padding: 20,
-    paddingBottom: 100, // Add space for buttons
+    paddingBottom: 20, // Reduced padding since buttons are now outside
   },
   infoContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
